@@ -1,0 +1,44 @@
+Select top 10 
+CAST(HASHBYTES('MD5', CONCAT (Vi.OrganizationID ,Vi.CenterID ,'Athena' ,CAST(VA.vitalID AS VARCHAR(255)) )) AS BINARY (55)) AS ObservationVitalsBusinessKey ,
+CAST(CONCAT (VI.OrganizationID ,'.' ,VI.CenterID ,'.' ,'Athena' ,'.' , CAST(VA.VitalID AS VARCHAR(255)))  AS NVARCHAR(613)) AS ObservationVitalsNaturalBusinessKey,
+VI.ContextID as ContextID,
+VI.OrganizationID as NetworkID,
+VI.CenterID as CenterID,
+'ATHENA' as SourceSystemID,
+VA.VitalID as ObservationID,
+--EN.PatientID as PatientBusinesskey,-- this will not be using
+--EN.PatientID as PatientNaturalBusinessKey,-- this will not be using
+--VI.ClinicalEncounterID as EncounterBusinesskey,--Couldnot fetch Encounterid from Athena.
+--En.ProviderID as EncounterNaturalBusinessKey,--Couldnot fetch Encounterid from Athena.
+--En.ProviderID as ResponsibleProviderBusinessKey,
+VR.ReadingDTS as MeasurementDTS,
+VR.ReadingDTS as MeasurementRecordedDTS,
+VR.ReadingID as SequenceNBR,
+---Null as SourceVitalTypeCD,
+VI.KeyNM as SourceVitalTypeDSC,
+L.LOINC  as LOINC,
+VAG.SNOMEDCD as SNOMED,
+Null as MEDCIN,
+VI.DBUnitCD as SourceVitalUnit,
+RVA.DefaultUnitsCD as SourceVitalUnit,
+VI.ValueTXT as SourceValueTXT,
+cast(VA.DataTypeCD as text) as ACRESValueTXT,
+cast( VA.DataTypeCD as numeric) as ACRESValueNBR,
+
+CASE when VR.DeletedDTS IS NOT NULL then 'Completed' else Null End as StatusCD
+
+from
+[Encounter].[VitalSignBASE] VI
+Inner  Join [Encounter].[EncounterBASE] EN on En.ClinicalEncounterID= Vi.ClinicalEncounterID and EN.CenterID=VI.CenterID and EN.OrganizationID=VI.OrganizationID
+Inner Join Person.PatientBASE PB on EN.PatientID=PB.PatientID and En.centerID = PB.CenterID and En.OrganizationID = PB.OrganizationID
+Inner Join Clinical.VitalAttributeReading VR on VR.ClinicalEncounterID=EN.ClinicalEncounterID and VR.CenterID = EN.CenterID and VR.OrganizationID= EN.OrganizationID
+INNER JOIN [Reference].[VitalAttributeBASE] RVA on RVA.[VitalAttributeID] = VR.VitalAttributeID and VR.CenterID= RVA.CenterID and VR.OrganizationID = RVA.OrganizationID
+Inner Join Person.Patient P on EN.PatientID = P.PatientID and EN.CenterID = P.CenterID and En.OrganizationID = P.OrganizationID
+--Left Join [Clinical].[VitalBASE] CVB on PB.PatientID=CVB.
+Inner JOIN [AthenaHI].[Reference].[VitalAttribute] VA on RVA.vitalid = VA.vitalid and VA.CenterID= RVA.CenterID and RVA.OrganizationID = VA.OrganizationID
+Inner join [AthenaHI].[Reference].[VitalAttributeValue] VAG on va.VitalAttributeID = vag.VitalAttributeID and VA.CenterID= VAG.CenterID  and VA.OrganizationID = VAG.OrganizationID
+Inner join Reference.LOINC l on VA.LOINCID = l.LOINCID and VA.CenterID = L.CenterID and L.OrganizationID= VA.OrganizationID
+Inner join Reference.LOINC l2 on va.LOINCID = l2.LOINCID and VA.CenterID = L2.CenterID and L2.OrganizationID= VA.OrganizationID
+Inner JOIN  Reference.LOINC l3 on vag.loincid = l3.LOINCID and VA.CenterID = L3.CenterID and L3.OrganizationID= VA.OrganizationID
+
+
